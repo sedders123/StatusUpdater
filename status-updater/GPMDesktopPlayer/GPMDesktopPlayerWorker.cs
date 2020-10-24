@@ -79,12 +79,40 @@ namespace status_updater.GPMDesktopPlayer
             }
         }
 
+        private static string GetStatus(string title, string artist)
+        {
+            const string separator = " - ";
+            if (title.Length + artist.Length + separator.Length <= 100)
+            {
+                return $"{title}{separator}{artist}";
+            }
+
+            if (title.Length > 45 && artist.Length > 45)
+            {
+                return $"{title.Substring(0, 45)}...{separator}{artist.Substring(0, 45)}...";
+            }
+
+            if (title.Length > 45 && artist.Length < 45)
+            {
+                var extraChars = 45 - artist.Length;
+                return $"{title.Substring(0, 45 + extraChars)}...{separator}{artist}";
+            }
+
+            if (artist.Length > 45 && title.Length < 45)
+            {
+                var extraChars = 45 - title.Length;
+                return $"{title}{separator}{artist.Substring(0, 45 + extraChars)}...";
+            }
+
+            return "Something's gone wrong";
+        }
+
         private async Task UpdateSlackStatus()
         {
             await _slackLock.WaitAsync();
             try
             {
-                var status = _isPlaying && _track != null ? $"{_track.Title} - {_track.Artist}" : null;
+                var status = _isPlaying && _track != null ? GetStatus(_track.Title, _track.Artist) : null;
                 var emoji = _isPlaying ? ":headphones:" : null;
                 var notified = await _slackService.SetUserStatusAsync(emoji, status);
 
