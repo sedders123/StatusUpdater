@@ -3,7 +3,10 @@ name: Service CI
 on:
   push:
    branches:
-       - main
+     - main
+   paths:
+     - status-updater/**/*
+     - .github/workflows/service-cd.yml
 
 jobs:
   ci:
