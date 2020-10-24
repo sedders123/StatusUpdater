@@ -11,6 +11,7 @@ namespace status_updater.GPMDesktopPlayer
     {
         private readonly ILogger<GPMDesktopPlayerWorker> _logger;
         private readonly SlackService _slackService;
+        private readonly StatusManager _statusManager;
         private readonly GPMDesktopPlayerOptions _options;
 
         private bool _isPlaying;
@@ -20,10 +21,11 @@ namespace status_updater.GPMDesktopPlayer
         private DateTime? _lastNotificationSentToSlack;
         private readonly SemaphoreSlim _slackLock = new SemaphoreSlim(1);
 
-        public GPMDesktopPlayerWorker(ILogger<GPMDesktopPlayerWorker> logger, IOptions<GPMDesktopPlayerOptions> options, SlackService slackService)
+        public GPMDesktopPlayerWorker(ILogger<GPMDesktopPlayerWorker> logger, IOptions<GPMDesktopPlayerOptions> options, SlackService slackService, StatusManager statusManager)
         {
             _logger = logger;
             _slackService = slackService;
+            _statusManager = statusManager;
             _options = options.Value;
         }
 
@@ -37,11 +39,11 @@ namespace status_updater.GPMDesktopPlayer
 #pragma warning restore 4014
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    var firstRun = !_lastNotificationSentToSlack.HasValue && _track != null;
-                    var lastNotificationFailed = _lastNotificationFailed && _lastNotificationSentToSlack.HasValue &&
-                                                 DateTime.UtcNow > _lastNotificationSentToSlack.Value.AddSeconds(5);
-                    var stateChanged = _stateChanged.HasValue && _lastNotificationSentToSlack.HasValue && DateTime.UtcNow > _stateChanged.Value.AddSeconds(0.5) &&
-                                       _stateChanged > _lastNotificationSentToSlack;
+                    var firstRun = !_statusManager.LastNotificationSentToSlack.HasValue && _track != null;
+                    var lastNotificationFailed = _statusManager.LastNotificationToSlackFailed && _statusManager.LastNotificationSentToSlack.HasValue &&
+                                                 DateTime.UtcNow > _statusManager.LastNotificationSentToSlack.Value.AddSeconds(5);
+                    var stateChanged = _stateChanged.HasValue && _statusManager.LastNotificationSentToSlack.HasValue && DateTime.UtcNow > _stateChanged.Value.AddSeconds(0.5) &&
+                                       _stateChanged > _statusManager.LastNotificationSentToSlack;
                     if (firstRun || lastNotificationFailed || stateChanged)
                     {
                         await UpdateSlackStatus();
@@ -114,10 +116,18 @@ namespace status_updater.GPMDesktopPlayer
             {
                 var status = _isPlaying && _track != null ? GetStatus(_track.Title, _track.Artist) : null;
                 var emoji = _isPlaying ? ":headphones:" : null;
-                var notified = await _slackService.SetUserStatusAsync(emoji, status);
-
+                bool notified;
+                if (status != null)
+                {
+                    notified = await _statusManager.SetStatusAsync(emoji, status, StatusType.Music);
+                }
+                else
+                {
+                    notified = await _statusManager.SetStatusCompleteAsync(StatusType.Music);
+                }
                 _lastNotificationFailed = !notified;
                 _lastNotificationSentToSlack = DateTime.UtcNow;
+
             }
             finally
             {

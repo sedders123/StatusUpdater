@@ -35,6 +35,7 @@ namespace status_updater
                     services.Configure<GPMDesktopPlayerOptions>(configuration.GetSection("gpmDesktopPlayer"));
                     services.Configure<SlackOptions>(configuration.GetSection("slack"));
                     services.AddHttpClient<SlackService>();
+                    services.AddSingleton<StatusManager>();
                 }).UseWindowsService();
         }
             
