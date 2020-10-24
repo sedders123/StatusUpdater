@@ -110,6 +110,7 @@ namespace status_updater.GPMDesktopPlayer
                 {
                     // Stay in loop
                 }
+                Thread.Sleep(TimeSpan.FromSeconds(0.1));
             }
 
             writer.Complete();
@@ -138,6 +139,9 @@ namespace status_updater.GPMDesktopPlayer
                         if(payload.Channel != "time")
                             await OnEventOccurredAsync(payload);
                     }
+
+                Thread.Sleep(TimeSpan.FromSeconds(0.1));
+
             }
         }
     }

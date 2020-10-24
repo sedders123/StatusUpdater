@@ -46,6 +46,8 @@ namespace status_updater.GPMDesktopPlayer
                     {
                         await UpdateSlackStatus();
                     }
+
+                    Thread.Sleep(TimeSpan.FromSeconds(0.1));
                 }
             }, stoppingToken);
 
