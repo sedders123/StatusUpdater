@@ -9,7 +9,7 @@ on:
      - .github/workflows/service-cd.yml
 
 jobs:
-  ci:
+  cd:
     runs-on: windows-latest
 
     steps:
