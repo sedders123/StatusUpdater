@@ -1,6 +1,10 @@
 name: Service CI
 
-on: [push]
+on:
+  push:
+    paths:
+      - status-updater/**/*
+      - .github/workflows/service-ci.yml
 
 jobs:
   ci:
