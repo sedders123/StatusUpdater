@@ -10,21 +10,18 @@ namespace status_updater.GPMDesktopPlayer
     public class GPMDesktopPlayerWorker : BackgroundService
     {
         private readonly ILogger<GPMDesktopPlayerWorker> _logger;
-        private readonly SlackService _slackService;
         private readonly StatusManager _statusManager;
         private readonly GPMDesktopPlayerOptions _options;
 
         private bool _isPlaying;
         private TrackPayload _track;
-        private bool _lastNotificationFailed;
         private DateTime? _stateChanged;
-        private DateTime? _lastNotificationSentToSlack;
-        private readonly SemaphoreSlim _slackLock = new SemaphoreSlim(1);
+        private DateTime? _lastNotificationSentToStatusManager;
+        private readonly SemaphoreSlim _statusLock = new SemaphoreSlim(1);
 
-        public GPMDesktopPlayerWorker(ILogger<GPMDesktopPlayerWorker> logger, IOptions<GPMDesktopPlayerOptions> options, SlackService slackService, StatusManager statusManager)
+        public GPMDesktopPlayerWorker(ILogger<GPMDesktopPlayerWorker> logger, IOptions<GPMDesktopPlayerOptions> options, StatusManager statusManager)
         {
             _logger = logger;
-            _slackService = slackService;
             _statusManager = statusManager;
             _options = options.Value;
         }
@@ -39,14 +36,12 @@ namespace status_updater.GPMDesktopPlayer
 #pragma warning restore 4014
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    var firstRun = !_statusManager.LastNotificationSentToSlack.HasValue && _track != null;
-                    var lastNotificationFailed = _statusManager.LastNotificationToSlackFailed && _statusManager.LastNotificationSentToSlack.HasValue &&
-                                                 DateTime.UtcNow > _statusManager.LastNotificationSentToSlack.Value.AddSeconds(5);
-                    var stateChanged = _stateChanged.HasValue && _statusManager.LastNotificationSentToSlack.HasValue && DateTime.UtcNow > _stateChanged.Value.AddSeconds(0.5) &&
-                                       _stateChanged > _statusManager.LastNotificationSentToSlack;
-                    if (firstRun || lastNotificationFailed || stateChanged)
+                    var firstRun = !_lastNotificationSentToStatusManager.HasValue && _track != null;
+                    var stateChanged = _stateChanged.HasValue && _lastNotificationSentToStatusManager.HasValue && DateTime.UtcNow > _stateChanged.Value.AddSeconds(0.5) &&
+                                       _stateChanged > _lastNotificationSentToStatusManager;
+                    if (firstRun || stateChanged)
                     {
-                        await UpdateSlackStatus();
+                        await UpdateStatusAsync();
                     }
 
                     Thread.Sleep(TimeSpan.FromSeconds(0.1));
@@ -59,7 +54,7 @@ namespace status_updater.GPMDesktopPlayer
 
         private async Task HandleWebSocketMessageAsync(GPMDesktopPlayerSocketHandler source, GPMDesktopPlayerData e)
         {
-            await _slackLock.WaitAsync();
+            await _statusLock.WaitAsync();
             try
             {
                 switch (e.Payload)
@@ -77,7 +72,7 @@ namespace status_updater.GPMDesktopPlayer
             }
             finally
             {
-                _slackLock.Release();
+                _statusLock.Release();
             }
         }
 
@@ -109,29 +104,27 @@ namespace status_updater.GPMDesktopPlayer
             return "Something's gone wrong";
         }
 
-        private async Task UpdateSlackStatus()
+        private async Task UpdateStatusAsync()
         {
-            await _slackLock.WaitAsync();
+            await _statusLock.WaitAsync();
             try
             {
                 var status = _isPlaying && _track != null ? GetStatus(_track.Title, _track.Artist) : null;
                 var emoji = _isPlaying ? ":headphones:" : null;
-                bool notified;
                 if (status != null)
                 {
-                    notified = await _statusManager.SetStatusAsync(emoji, status, StatusType.Music);
+                    await _statusManager.SetStatusAsync(emoji, status, StatusType.Music);
                 }
                 else
                 {
-                    notified = await _statusManager.SetStatusCompleteAsync(StatusType.Music);
+                    await _statusManager.SetStatusCompleteAsync(StatusType.Music);
                 }
-                _lastNotificationFailed = !notified;
-                _lastNotificationSentToSlack = DateTime.UtcNow;
+                _lastNotificationSentToStatusManager = DateTime.UtcNow;
 
             }
             finally
             {
-                _slackLock.Release();
+                _statusLock.Release();
             }
 
         }

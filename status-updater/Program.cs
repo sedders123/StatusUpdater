@@ -27,7 +27,10 @@ namespace status_updater
                 })
                 .ConfigureServices((hostContext, services) =>
                 {
-                    services.AddHostedService<GPMDesktopPlayerWorker>().Configure<EventLogSettings>(config =>
+                    services
+                        .AddHostedService<GPMDesktopPlayerWorker>()
+                        .AddHostedService<RetryWorker>()
+                        .Configure<EventLogSettings>(config =>
                     {
                         config.LogName = "Slack Status Updater Service";
                         config.SourceName = "Slack Status Updater Service Source";

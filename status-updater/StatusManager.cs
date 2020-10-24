@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace status_updater
 {
-
     public enum StatusType
     {
         None,
@@ -15,7 +15,6 @@ namespace status_updater
 
     public static class Extensions
     {
-
         public static T Next<T>(this T src) where T : struct
         {
             if (!typeof(T).IsEnum) throw new ArgumentException($"Argument {typeof(T).FullName} is not an Enum");
@@ -40,12 +39,14 @@ namespace status_updater
         public bool LastNotificationToSlackFailed { get; private set; }
         public DateTime? LastNotificationSentToSlack { get; private set; }
 
+        private readonly SemaphoreSlim _statusLock = new SemaphoreSlim(1);
+
         private readonly SlackService _service;
         private StatusType _currentStatusType = StatusType.Music;
 
         private readonly Dictionary<StatusType, (string emoji, string Status)> _currentStatuses = new Dictionary<StatusType, (string emoji, string Status)>
         {
-            { StatusType.None, (null, null) }
+            {StatusType.None, (null, null)}
         };
 
         public StatusManager(SlackService service)
@@ -56,14 +57,22 @@ namespace status_updater
 
         public async Task<bool> SetStatusAsync(string emoji, string status, StatusType type)
         {
-            _currentStatuses[type] = (emoji, status);
-            if (type >= _currentStatusType)
+            await _statusLock.WaitAsync();
+            try
             {
-                _currentStatusType = type;
-                return await SetStatus(emoji, status);
+                _currentStatuses[type] = (emoji, status);
+                if (type >= _currentStatusType)
+                {
+                    _currentStatusType = type;
+                    return await SetStatus(emoji, status);
+                }
+                return true;
+            }
+            finally
+            {
+                _statusLock.Release(1);
             }
 
-            return true;
         }
 
         private async Task<bool> SetStatus(string emoji, string status)
@@ -76,17 +85,34 @@ namespace status_updater
 
         public async Task SyncStatus()
         {
-            var (emoji, status) = _currentStatuses[_currentStatusType];
-            await SetStatus(emoji, status);
+            await _statusLock.WaitAsync();
+            try
+            {
+                var (emoji, status) = _currentStatuses[_currentStatusType];
+                await SetStatus(emoji, status);
+            }
+            finally
+            {
+                _statusLock.Release(1);
+            }
         }
 
-        public async Task<bool> SetStatusCompleteAsync(StatusType type)
+        public async Task SetStatusCompleteAsync(StatusType type)
         {
-            _currentStatuses[type] = (null, null);
+            await _statusLock.WaitAsync();
+            try
+            {
+                _currentStatuses[type] = (null, null);
 
-            _currentStatusType = type.Previous();
-            var (emoji, status) = _currentStatuses[_currentStatusType];
-            return await SetStatus(emoji, status);
+                _currentStatusType = type.Previous();
+                var (emoji, status) = _currentStatuses[_currentStatusType];
+                await SetStatus(emoji, status);
+            }
+            finally
+            {
+                _statusLock.Release(1);
+            }
+
         }
     }
 }
