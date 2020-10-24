@@ -1,0 +1,24 @@
+name: Service CI
+
+on:
+  push:
+    paths:
+      - status-updater/**/*
+      - .github/workflows/service-ci.yml
+
+jobs:
+  ci:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v1.7.2
+        with:
+          dotnet-version: 5.0.100-rc.2.20479.15
+      - name: Restore Packages
+        run: dotnet restore
+        working-directory: ./status-updater
+      - name: Build
+        run: dotnet build
+        working-directory: ./status-updater
