@@ -117,15 +117,34 @@ namespace status_updater
                 {
                     return;
                 }
-                _currentStatusType = type.Previous();
-                var (emoji, status) = _currentStatuses[_currentStatusType];
+
+                var (emoji, status, newType) = GetNextStatus(type);
+                _currentStatusType = newType;
+
                 await SetSlackStatusAsync(emoji, status);
             }
             finally
             {
                 _statusLock.Release(1);
             }
+        }
 
+        private (string emoji, string status, StatusType type) GetNextStatus(StatusType type)
+        {
+            if (type == StatusType.None)
+            {
+                return (null, null, StatusType.None);
+            }
+
+            var nextType = type.Previous();
+            var (emoji, status) = _currentStatuses[nextType];
+
+            if (emoji == null && status == null)
+            {
+                return GetNextStatus(nextType);
+            }
+
+            return (emoji, status, nextType);
         }
     }
 }
