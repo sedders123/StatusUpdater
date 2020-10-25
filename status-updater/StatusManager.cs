@@ -60,11 +60,20 @@ namespace status_updater
             await _statusLock.WaitAsync();
             try
             {
+                if (_currentStatuses.ContainsKey(type))
+                {
+                    var (currentEmoji, currentStatus) = _currentStatuses[type];
+                    if (currentEmoji == emoji && currentStatus == status)
+                    {
+                        return true;
+                    }
+                }
+
                 _currentStatuses[type] = (emoji, status);
                 if (type >= _currentStatusType)
                 {
                     _currentStatusType = type;
-                    return await SetStatus(emoji, status);
+                    return await SetSlackStatusAsync(emoji, status);
                 }
                 return true;
             }
@@ -75,7 +84,7 @@ namespace status_updater
 
         }
 
-        private async Task<bool> SetStatus(string emoji, string status)
+        private async Task<bool> SetSlackStatusAsync(string emoji, string status)
         {
             var notified = await _service.SetUserStatusAsync(emoji, status);
             LastNotificationToSlackFailed = !notified;
@@ -89,7 +98,7 @@ namespace status_updater
             try
             {
                 var (emoji, status) = _currentStatuses[_currentStatusType];
-                await SetStatus(emoji, status);
+                await SetSlackStatusAsync(emoji, status);
             }
             finally
             {
@@ -111,7 +120,7 @@ namespace status_updater
 
                 _currentStatusType = type.Previous();
                 var (emoji, status) = _currentStatuses[_currentStatusType];
-                await SetStatus(emoji, status);
+                await SetSlackStatusAsync(emoji, status);
             }
             finally
             {

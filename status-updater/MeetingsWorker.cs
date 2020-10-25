@@ -19,6 +19,8 @@ namespace status_updater
         private readonly StatusManager _statusManager;
         private readonly MeetingOptions _options;
         private readonly HttpClient _httpClient;
+        private Calendar _calendar;
+        private DateTime _nextCalendarUpdate = DateTime.UtcNow;
 
         public MeetingsWorker(StatusManager statusManager, IOptions<MeetingOptions> options)
         {
@@ -27,12 +29,23 @@ namespace status_updater
             _httpClient = new HttpClient();
         }
 
-        public async Task<Calendar> LoadFromUriAsync(Uri uri)
+        private async Task<Calendar> LoadFromUriAsync(Uri uri)
         {
             using var response = await _httpClient.GetAsync(uri);
             response.EnsureSuccessStatusCode();
             var result = await response.Content.ReadAsStringAsync();
             return Calendar.Load(result);
+        }
+
+        private async Task<Calendar> GetCalendarAsync(Uri uri)
+        {
+            if (_calendar == null || DateTime.UtcNow >= _nextCalendarUpdate)
+            {
+                _calendar = await LoadFromUriAsync(uri);
+                _nextCalendarUpdate = DateTime.UtcNow.AddMinutes(30);
+            }
+
+            return _calendar;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -41,8 +54,8 @@ namespace status_updater
             {
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    var calendar = await LoadFromUriAsync(new Uri(_options.CalendarUri));
-                    var result = calendar.GetFreeBusy(new CalDateTime(DateTime.UtcNow), new CalDateTime(DateTime.UtcNow.AddMinutes(5)));
+                    var calendar = await GetCalendarAsync(new Uri(_options.CalendarUri));
+                    var result = calendar.GetFreeBusy(new CalDateTime(DateTime.UtcNow.Date), new CalDateTime(DateTime.UtcNow.Date.AddDays(1)));
                     var status = result.GetFreeBusyStatus(new CalDateTime(DateTime.UtcNow));
                     if (status == FreeBusyStatus.Busy || status == FreeBusyStatus.BusyTentative || status == FreeBusyStatus.BusyUnavailable)
                     {
@@ -53,7 +66,7 @@ namespace status_updater
                         await _statusManager.SetStatusCompleteAsync(StatusType.Meeting);
                     }
 
-                    Thread.Sleep(TimeSpan.FromMinutes(5));
+                    Thread.Sleep(TimeSpan.FromSeconds(1));
                 }
             }, stoppingToken);
             
