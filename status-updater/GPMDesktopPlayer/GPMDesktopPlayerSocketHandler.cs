@@ -60,7 +60,7 @@ namespace status_updater.GPMDesktopPlayer
         /// Continually listens to the WebSocket and raises EventsOccurrences when messages are received.
         /// </summary>
         /// <param name="cancellationToken">Cancellation token used to halt the function.</param>
-        public async Task RunAsync(CancellationToken cancellationToken)
+        public void Run(CancellationToken cancellationToken)
         {
             if (!_connected) throw new Exception("Not connected to socket");
             var pipe = new Pipe();
@@ -106,7 +106,7 @@ namespace status_updater.GPMDesktopPlayer
                     writer.Advance(socketResult.Count);
                     if (socketResult.EndOfMessage) await writer.FlushAsync(cancellationToken);
                 }
-                catch (Exception ex)
+                catch
                 {
                     // Stay in loop
                 }
