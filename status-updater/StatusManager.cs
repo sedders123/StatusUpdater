@@ -102,6 +102,11 @@ namespace status_updater
             await _statusLock.WaitAsync();
             try
             {
+                if (_currentStatusType != type)
+                {
+                    return;
+                }
+
                 _currentStatuses[type] = (null, null);
 
                 _currentStatusType = type.Previous();
