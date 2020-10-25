@@ -49,7 +49,7 @@ namespace status_updater.GPMDesktopPlayer
             }, stoppingToken);
 
             await handler.ConnectAsync(stoppingToken);
-            await handler.RunAsync(stoppingToken);
+            handler.Run(stoppingToken);
         }
 
         private async Task HandleWebSocketMessageAsync(GPMDesktopPlayerSocketHandler source, GPMDesktopPlayerData e)

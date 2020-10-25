@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging.EventLog;
 using Microsoft.Extensions.Configuration;
 using status_updater.GPMDesktopPlayer;
 
@@ -28,9 +27,9 @@ namespace status_updater
                 .ConfigureServices((hostContext, services) =>
                 {
                     services.AddHostedService<GPMDesktopPlayerWorker>();
-                        services.AddHostedService<RetryWorker>();
-                        services.AddHostedService<MeetingsWorker>();
-                        services.AddHostedService<ZoomCallWorker>();
+                    services.AddHostedService<RetryWorker>();
+                    services.AddHostedService<MeetingsWorker>();
+                    services.AddHostedService<CallsWorker>();
                     services.Configure<GPMDesktopPlayerOptions>(configuration.GetSection("gpmDesktopPlayer"));
                     services.Configure<SlackOptions>(configuration.GetSection("slack"));
                     services.Configure<MeetingOptions>(configuration.GetSection("meetings"));
