@@ -60,7 +60,6 @@ namespace status_updater.GPMDesktopPlayer
                 switch (e.Payload)
                 {
                     case TrackPayload trackPayload when e.Channel == "track":
-                        _logger.LogInformation(e.Channel);
                         _track = trackPayload;
                         _stateChanged = DateTime.UtcNow;
                         break;

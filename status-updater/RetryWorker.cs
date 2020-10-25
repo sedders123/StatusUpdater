@@ -16,16 +16,19 @@ namespace status_updater
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            while (!stoppingToken.IsCancellationRequested)
+            await Task.Run(async () =>
             {
-                if (_statusManager.LastNotificationToSlackFailed && _statusManager.LastNotificationSentToSlack.HasValue &&
-                    DateTime.UtcNow > _statusManager.LastNotificationSentToSlack.Value.AddSeconds(5))
+                while (!stoppingToken.IsCancellationRequested)
                 {
-                    await _statusManager.SyncStatus();
-                }
+                    if (_statusManager.LastNotificationToSlackFailed && _statusManager.LastNotificationSentToSlack.HasValue &&
+                        DateTime.UtcNow > _statusManager.LastNotificationSentToSlack.Value.AddSeconds(5))
+                    {
+                        await _statusManager.SyncStatus();
+                    }
 
-                Thread.Sleep(TimeSpan.FromSeconds(1));
-            }
+                    Thread.Sleep(TimeSpan.FromSeconds(1));
+                }
+            }, stoppingToken);
         }
     }
 }

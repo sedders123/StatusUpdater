@@ -27,16 +27,12 @@ namespace status_updater
                 })
                 .ConfigureServices((hostContext, services) =>
                 {
-                    services
-                        .AddHostedService<GPMDesktopPlayerWorker>()
-                        .AddHostedService<RetryWorker>()
-                        .Configure<EventLogSettings>(config =>
-                    {
-                        config.LogName = "Slack Status Updater Service";
-                        config.SourceName = "Slack Status Updater Service Source";
-                    });
+                    services.AddHostedService<GPMDesktopPlayerWorker>();
+                        services.AddHostedService<RetryWorker>();
+                        services.AddHostedService<MeetingsWorker>();
                     services.Configure<GPMDesktopPlayerOptions>(configuration.GetSection("gpmDesktopPlayer"));
                     services.Configure<SlackOptions>(configuration.GetSection("slack"));
+                    services.Configure<MeetingOptions>(configuration.GetSection("meetings"));
                     services.AddHttpClient<SlackService>();
                     services.AddSingleton<StatusManager>();
                 }).UseWindowsService();
