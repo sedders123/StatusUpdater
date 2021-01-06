@@ -10,7 +10,7 @@
   "author": "James Seden Smith",
   "license": "MIT",
   "dependencies": {
-    "axios": "^0.21.0",
+    "axios": "^0.21.1",
     "crypto-js": "^4.0.0",
     "express": "^4.17.1",
     "luxon": "^1.25.0"
